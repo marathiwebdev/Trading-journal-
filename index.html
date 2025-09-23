@@ -397,14 +397,6 @@ if(editId){
       console.error('Error saving', e);    // <— add this
       alert('Error saving: '+e.message);
     });
-} {
-      const newRef = userRef.push();
-      newRef.set(data)
-        .then(()=>{ resetForm(); })
-        .catch(e=>alert('Error saving: '+e.message));
-    }
-  });
-
   function resetForm(){
     tradeDt.value = '';
     pairEl.value = '';
