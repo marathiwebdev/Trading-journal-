@@ -375,11 +375,29 @@
     const data = { dt: dtVal, dtISO, pair, entry, exit, pips, sl_pips, pl, notes };
 
     const userRef = firebase.database().ref('users/'+currentUser.uid+'/records');
-    if(editId){
-      userRef.child(editId).set(data)
-        .then(()=>{ resetForm(); })
-        .catch(e=>alert('Error updating: '+e.message));
-    } else {
+    console.log('Saving data for user:', currentUser.uid, data);   // <— add this line before writing to db
+if(editId){
+  userRef.child(editId).set(data)
+    .then(()=>{
+      console.log('Updated ok');    // <— add this
+      resetForm();
+    })
+    .catch(e=>{
+      console.error('Error updating', e);   // <— add this
+      alert('Error updating: '+e.message);
+    });
+} else {
+  const newRef = userRef.push();
+  newRef.set(data)
+    .then(()=>{
+      console.log('Saved ok');   // <— add this
+      resetForm();
+    })
+    .catch(e=>{
+      console.error('Error saving', e);    // <— add this
+      alert('Error saving: '+e.message);
+    });
+} {
       const newRef = userRef.push();
       newRef.set(data)
         .then(()=>{ resetForm(); })
