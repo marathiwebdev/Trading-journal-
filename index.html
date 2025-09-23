@@ -74,10 +74,44 @@
             <input id="trade-dt" type="datetime-local">
           </div>
           <div>
-            <label>Pair / Instrument</label>
-            <input id="pair" placeholder="e.g. EURUSD, GBPJPY">
-          </div>
-        </div>
+  <label>Pair / Instrument</label>
+  <select id="pair">
+    <option value="">-- Select Pair --</option>
+    <!-- majors -->
+    <option>EURUSD</option>
+    <option>GBPUSD</option>
+    <option>USDJPY</option>
+    <option>USDCHF</option>
+    <option>USDCAD</option>
+    <option>AUDUSD</option>
+    <option>NZDUSD</option>
+    <!-- minors / crosses -->
+    <option>EURGBP</option>
+    <option>EURJPY</option>
+    <option>EURCHF</option>
+    <option>EURCAD</option>
+    <option>EURAUD</option>
+    <option>EURNZD</option>
+    <option>GBPJPY</option>
+    <option>GBPCHF</option>
+    <option>GBPCAD</option>
+    <option>GBPAUD</option>
+    <option>GBPNZD</option>
+    <option>CADJPY</option>
+    <option>CHFJPY</option>
+    <option>AUDJPY</option>
+    <option>AUDNZD</option>
+    <option>AUDCAD</option>
+    <option>AUDCHF</option>
+    <option>NZDJPY</option>
+    <option>NZDCAD</option>
+    <option>NZDCHF</option>
+    <!-- metals & crypto -->
+    <option>XAUUSD</option>
+    <option>BTCUSD</option>
+    <!-- add more like ETHUSD, USDINR, etc. if you want -->
+  </select>
+</div>
 
         <div class="grid grid-2" style="margin-top:8px">
           <div>
