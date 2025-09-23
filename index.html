@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Trade Journal — Profit / Loss & Pips Tracker</title>
+  <style>
+    /* Simple responsive layout */
+    :root{
+      --maxw:1100px;
+      --accent:#1f6feb;
+      --muted:#666;
+      --card:#fff;
+      --bg:#f4f7fb;
+    }
+    *{box-sizing:border-box;font-family:Inter, Arial, sans-serif}
+    body{margin:0;background:var(--bg);color:#111;display:flex;justify-content:center;padding:24px}
+    .app{width:100%;max-width:var(--maxw)}
+    header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+    h1{margin:0;font-size:20px}
+    .card{background:var(--card);padding:16px;border-radius:8px;box-shadow:0 2px 8px rgba(20,30,60,0.06);margin-bottom:12px}
+    .auth-row{display:flex;gap:8px;align-items:center}
+    input,select,textarea{padding:8px;border:1px solid #ddd;border-radius:6px;width:100%}
+    label{font-size:13px;color:var(--muted);display:block;margin-bottom:6px}
+    .grid{display:grid;gap:8px}
+    .grid-2{grid-template-columns:1fr 1fr}
+    .form-row{display:flex;gap:8px}
+    button{background:var(--accent);color:#fff;border:0;padding:8px 12px;border-radius:6px;cursor:pointer}
+    button.ghost{background:transparent;color:var(--accent);border:1px solid var(--accent)}
+    table{width:100%;border-collapse:collapse;margin-top:12px;font-size:13px}
+    th,td{padding:8px;border-bottom:1px solid #eee;text-align:left}
+    .small{font-size:12px;color:var(--muted)}
+    .muted{color:var(--muted)}
+    .actions button{margin-right:6px}
+    .summary{display:flex;gap:12px;flex-wrap:wrap}
+    .summary .s{padding:10px;border-radius:8px;background:#fff;min-width:160px}
+    .filters{display:flex;gap:8px;flex-wrap:wrap}
+    @media (max-width:700px){
+      .grid-2{grid-template-columns:1fr}
+      .form-row{flex-direction:column}
+      header{flex-direction:column;align-items:flex-start;gap:8px}
+    }
+  </style>
+  <!-- Firebase v8 CDN (Auth + Realtime DB) -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>Trade Journal — P/L & Pips Tracker</h1>
+      <div class="auth-card card">
+        <div id="auth-unsigned" class="auth-row">
+          <input id="email" type="email" placeholder="Email" style="width:200px">
+          <input id="password" type="password" placeholder="Password" style="width:150px">
+          <button id="btn-signup">Sign up</button>
+          <button id="btn-login" class="ghost">Login</button>
+        </div>
+        <div id="auth-signed" class="auth-row" style="display:none">
+          <div class="small muted" id="who"></div>
+          <button id="btn-logout" class="ghost">Logout</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Add / Edit Record -->
+    <section class="card">
+      <h3 style="margin-top:0">Add / Edit Trade</h3>
+      <div id="form-area">
+        <div class="grid grid-2" style="gap:10px">
+          <div>
+            <label>Date & Time</label>
+            <input id="trade-dt" type="datetime-local">
+          </div>
+          <div>
+            <label>Pair / Instrument</label>
+            <input id="pair" placeholder="e.g. EURUSD, GBPJPY">
+          </div>
+        </div>
+
+        <div class="grid grid-2" style="margin-top:8px">
+          <div>
+            <label>Entry Price</label>
+            <input id="entry" placeholder="Entry price (optional)">
+          </div>
+          <div>
+            <label>Exit Price</label>
+            <input id="exit" placeholder="Exit price (optional)">
+          </div>
+        </div>
+
+        <div class="grid grid-2" style="margin-top:8px">
+          <div>
+            <label>Pips Captured</label>
+            <input id="pips" type="number" placeholder="pips captured (e.g. 25)">
+          </div>
+          <div>
+            <label>Stop Loss (pips)</label>
+            <input id="slpips" type="number" placeholder="SL in pips">
+          </div>
+        </div>
+
+        <div class="grid" style="margin-top:8px">
+          <div>
+            <label>Profit / Loss (₹ / $ / %)</label>
+            <input id="pl" placeholder="Profit or Loss value (e.g. -2000 or 1500)">
+          </div>
+        </div>
+
+        <div style="margin-top:8px">
+          <label>Type mistake / notes</label>
+          <textarea id="notes" rows="3" placeholder="What went wrong? What to improve?"></textarea>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
+          <button id="save-record">Save record</button>
+          <button id="clear-form" class="ghost">Clear</button>
+          <div class="small muted" id="form-mode">Mode: Add</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Controls -->
+    <section class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <div class="filters">
+          <label class="small">Filter</label>
+          <select id="filter-pair">
+            <option value="">All pairs</option>
+          </select>
+          <input id="filter-from" type="date">
+          <input id="filter-to" type="date">
+          <button id="apply-filter" class="ghost">Apply</button>
+          <button id="reset-filter" class="ghost">Reset</button>
+        </div>
+
+        <div style="display:flex;gap:8px;align-items:center">
+          <button id="export-csv" class="ghost">Export CSV</button>
+          <button id="delete-all" class="ghost" title="Delete all your records (permanent)">Delete all</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Summary -->
+    <section class="card">
+      <h3 style="margin-top:0">Summary</h3>
+      <div class="summary" id="summary">
+        <div class="s">
+          <div class="small muted">Total Trades</div>
+          <div id="tot-trades">0</div>
+        </div>
+        <div class="s">
+          <div class="small muted">Total Pips Captured</div>
+          <div id="tot-pips">0</div>
+        </div>
+        <div class="s">
+          <div class="small muted">Total SL (sum)</div>
+          <div id="tot-slpips">0</div>
+        </div>
+        <div class="s">
+          <div class="small muted">Net P/L (sum)</div>
+          <div id="tot-pl">0</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- List -->
+    <section class="card">
+      <h3 style="margin-top:0">Records</h3>
+      <div id="records-wrap">
+        <table id="records-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Pair</th>
+              <th>Pips</th>
+              <th>SL(pips)</th>
+              <th>P/L</th>
+              <th>Notes</th>
+              <th class="small">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="records-body">
+            <!-- rows -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <footer style="font-size:12px;color:var(--muted);margin-top:8px">Made for quick trade journaling — you can modify fields as needed.</footer>
+  </div>
+
+<script>
+  /*******************************
+   *  CONFIGURE FIREBASE HERE
+   *  Replace the config object values with your Firebase project values.
+   *  - Create a Firebase project
+   *  - Enable Email/Password sign-in (Authentication)
+   *  - Create a Realtime Database and set rules to allow authenticated users to read/write under /users/{uid}/records
+   *******************************/
+  const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT.firebaseapp.com",
+    databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_PROJECT.appspot.com",
+    messagingSenderId: "SENDER_ID",
+    appId: "APP_ID"
+  };
+  firebase.initializeApp(firebaseConfig);
+
+  // References to DOM
+  const emailEl = document.getElementById('email');
+  const passEl = document.getElementById('password');
+  const btnSignup = document.getElementById('btn-signup');
+  const btnLogin = document.getElementById('btn-login');
+  const authUnsigned = document.getElementById('auth-unsigned');
+  const authSigned = document.getElementById('auth-signed');
+  const whoEl = document.getElementById('who');
+  const btnLogout = document.getElementById('btn-logout');
+
+  const tradeDt = document.getElementById('trade-dt');
+  const pairEl = document.getElementById('pair');
+  const entryEl = document.getElementById('entry');
+  const exitEl = document.getElementById('exit');
+  const pipsEl = document.getElementById('pips');
+  const slpipsEl = document.getElementById('slpips');
+  const plEl = document.getElementById('pl');
+  const notesEl = document.getElementById('notes');
+  const saveBtn = document.getElementById('save-record');
+  const clearBtn = document.getElementById('clear-form');
+  const formMode = document.getElementById('form-mode');
+
+  const recordsBody = document.getElementById('records-body');
+  const totTradesEl = document.getElementById('tot-trades');
+  const totPipsEl = document.getElementById('tot-pips');
+  const totSLEl = document.getElementById('tot-slpips');
+  const totPlEl = document.getElementById('tot-pl');
+
+  const exportCsvBtn = document.getElementById('export-csv');
+  const deleteAllBtn = document.getElementById('delete-all');
+
+  const filterPair = document.getElementById('filter-pair');
+  const filterFrom = document.getElementById('filter-from');
+  const filterTo = document.getElementById('filter-to');
+  const applyFilter = document.getElementById('apply-filter');
+  const resetFilter = document.getElementById('reset-filter');
+
+  let currentUser = null;
+  let editId = null;
+  let allRecords = {}; // cached copy
+
+  // AUTH actions
+  btnSignup.addEventListener('click', () => {
+    const email = emailEl.value.trim();
+    const pw = passEl.value;
+    if(!email||!pw){alert('Enter email and password');return;}
+    firebase.auth().createUserWithEmailAndPassword(email,pw)
+      .then(()=>alert('Account created — now you can login'))
+      .catch(e=>alert('Signup error: '+e.message));
+  });
+
+  btnLogin.addEventListener('click', () => {
+    const email = emailEl.value.trim();
+    const pw = passEl.value;
+    if(!email||!pw){alert('Enter email and password');return;}
+    firebase.auth().signInWithEmailAndPassword(email,pw)
+      .catch(e=>alert('Login error: '+e.message));
+  });
+
+  btnLogout.addEventListener('click', () => {
+    firebase.auth().signOut();
+  });
+
+  firebase.auth().onAuthStateChanged(user=>{
+    currentUser = user;
+    if(user){
+      authUnsigned.style.display='none';
+      authSigned.style.display='flex';
+      whoEl.textContent = user.email;
+      startListeningRecords();
+    } else {
+      authUnsigned.style.display='flex';
+      authSigned.style.display='none';
+      whoEl.textContent='';
+      stopListeningRecords();
+      clearUI();
+    }
+  });
+
+  /************* Database path *************
+   We'll store records at: /users/{uid}/records/{recordId}
+   Each record shape:
+   {
+     dt: epochMillis,
+     dtISO: "2025-09-23T12:30:00",
+     pair: "EURUSD",
+     entry: "1.0812",
+     exit: "1.0835",
+     pips: 23,
+     sl_pips: 12,
+     pl: 1500,
+     notes: "tight trailing; mistake: late entry"
+   }
+  *******************************************/
+
+  let dbRef = null;
+  function startListeningRecords(){
+    if(!currentUser) return;
+    dbRef = firebase.database().ref('users/'+currentUser.uid+'/records');
+    dbRef.on('value', snapshot=>{
+      const val = snapshot.val() || {};
+      allRecords = val;
+      renderRecords(val);
+    });
+  }
+  function stopListeningRecords(){
+    if(dbRef) dbRef.off();
+    dbRef = null;
+    allRecords = {};
+  }
+
+  // Save / Update record
+  saveBtn.addEventListener('click', () => {
+    if(!currentUser){alert('Login first');return;}
+    const dtVal = tradeDt.value ? new Date(tradeDt.value).getTime() : Date.now();
+    const dtISO = tradeDt.value ? new Date(tradeDt.value).toISOString() : new Date().toISOString();
+    const pair = pairEl.value.trim();
+    const entry = entryEl.value.trim();
+    const exit = exitEl.value.trim();
+    const pips = pipsEl.value ? Number(pipsEl.value) : 0;
+    const sl_pips = slpipsEl.value ? Number(slpipsEl.value) : 0;
+    const pl = plEl.value ? Number(plEl.value) : 0;
+    const notes = notesEl.value.trim();
+
+    if(!pair){alert('Enter pair/instrument');return;}
+
+    const data = { dt: dtVal, dtISO, pair, entry, exit, pips, sl_pips, pl, notes };
+
+    const userRef = firebase.database().ref('users/'+currentUser.uid+'/records');
+    if(editId){
+      userRef.child(editId).set(data)
+        .then(()=>{ resetForm(); })
+        .catch(e=>alert('Error updating: '+e.message));
+    } else {
+      const newRef = userRef.push();
+      newRef.set(data)
+        .then(()=>{ resetForm(); })
+        .catch(e=>alert('Error saving: '+e.message));
+    }
+  });
+
+  function resetForm(){
+    tradeDt.value = '';
+    pairEl.value = '';
+    entryEl.value = '';
+    exitEl.value = '';
+    pipsEl.value = '';
+    slpipsEl.value = '';
+    plEl.value = '';
+    notesEl.value = '';
+    editId = null;
+    formMode.textContent = 'Mode: Add';
+  }
+  clearBtn.addEventListener('click', resetForm);
+
+  // Render records table + summary
+  function renderRecords(recordsObj){
+    // convert to array and sort by dt desc
+    const arr = Object.keys(recordsObj).map(id => ({ id, ...recordsObj[id] }))
+      .sort((a,b)=>b.dt - a.dt);
+    // apply filters (if set)
+    const fp = filterPair.value;
+    const from = filterFrom.value ? new Date(filterFrom.value).setHours(0,0,0,0) : null;
+    const to = filterTo.value ? new Date(filterTo.value).setHours(23,59,59,999) : null;
+
+    const filtered = arr.filter(r=>{
+      if(fp && r.pair !== fp) return false;
+      if(from && r.dt < from) return false;
+      if(to && r.dt > to) return false;
+      return true;
+    });
+
+    // populate pair filter options
+    populatePairFilter(arr);
+
+    // summary
+    let tot = 0, totPips = 0, totSL = 0;
+    filtered.forEach(r=>{
+      tot++;
+      totPips += Number(r.pips || 0);
+      totSL += Number(r.sl_pips || 0);
+    });
+    const totPL = filtered.reduce((s,r)=>s + Number(r.pl || 0), 0);
+
+    totTradesEl.textContent = tot;
+    totPipsEl.textContent = totPips;
+    totSLEl.textContent = totSL;
+    totPlEl.textContent = totPL;
+
+    // table rows
+    recordsBody.innerHTML = '';
+    filtered.forEach(r=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${new Date(r.dt).toLocaleString()}</td>
+        <td>${escapeHtml(r.pair)}</td>
+        <td>${r.pips ?? ''}</td>
+        <td>${r.sl_pips ?? ''}</td>
+        <td>${r.pl ?? ''}</td>
+        <td class="small">${escapeHtml(r.notes || '')}</td>
+        <td class="actions small">
+          <button data-id="${r.id}" class="btn-edit">Edit</button>
+          <button data-id="${r.id}" class="btn-delete">Delete</button>
+        </td>
+      `;
+      recordsBody.appendChild(tr);
+    });
+
+    // wire edit/delete buttons
+    Array.from(document.getElementsByClassName('btn-edit')).forEach(b=>{
+      b.onclick = (ev)=>{
+        const id = ev.target.getAttribute('data-id');
+        startEdit(id);
+      };
+    });
+    Array.from(document.getElementsByClassName('btn-delete')).forEach(b=>{
+      b.onclick = (ev)=>{
+        const id = ev.target.getAttribute('data-id');
+        if(confirm('Delete this record?')) deleteRecord(id);
+      };
+    });
+  }
+
+  function populatePairFilter(arr){
+    const set = new Set(arr.map(r=>r.pair));
+    const current = filterPair.value;
+    filterPair.innerHTML = '<option value="">All pairs</option>';
+    Array.from(set).sort().forEach(p=>{
+      const opt = document.createElement('option');
+      opt.value = p; opt.textContent = p;
+      filterPair.appendChild(opt);
+    });
+    if(current) filterPair.value = current;
+  }
+
+  function startEdit(id){
+    if(!allRecords[id]){alert('Record not found'); return;}
+    const r = allRecords[id];
+    editId = id;
+    tradeDt.value = r.dtISO ? r.dtISO.substring(0,16) : '';
+    pairEl.value = r.pair || '';
+    entryEl.value = r.entry || '';
+    exitEl.value = r.exit || '';
+    pipsEl.value = r.pips || '';
+    slpipsEl.value = r.sl_pips || '';
+    plEl.value = r.pl || '';
+    notesEl.value = r.notes || '';
+    formMode.textContent = 'Mode: Edit';
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
+
+  function deleteRecord(id){
+    if(!currentUser) return;
+    firebase.database().ref('users/'+currentUser.uid+'/records/'+id).remove()
+      .catch(e=>alert('Delete failed: '+e.message));
+  }
+
+  // Delete all records (danger)
+  deleteAllBtn.addEventListener('click', ()=>{
+    if(!currentUser) return;
+    if(!confirm('Delete ALL your records permanently? This cannot be undone.')) return;
+    firebase.database().ref('users/'+currentUser.uid+'/records').remove()
+      .catch(e=>alert('Delete all failed: '+e.message));
+  });
+
+  // Filters
+  applyFilter.addEventListener('click', ()=> renderRecords(allRecords));
+  resetFilter.addEventListener('click', ()=>{
+    filterPair.value=''; filterFrom.value=''; filterTo.value='';
+    renderRecords(allRecords);
+  });
+
+  // Export CSV
+  exportCsvBtn.addEventListener('click', ()=>{
+    if(!currentUser) return alert('Login first');
+    const arr = Object.keys(allRecords).map(id => ({ id, ...allRecords[id] }))
+      .sort((a,b)=>b.dt - a.dt);
+    if(arr.length===0) return alert('No records to export');
+
+    const header = ['id','date','pair','entry','exit','pips','sl_pips','pl','notes'];
+    const rows = arr.map(r=>{
+      return [
+        r.id,
+        new Date(r.dt).toISOString(),
+        r.pair || '',
+        r.entry || '',
+        r.exit || '',
+        r.pips || '',
+        r.sl_pips || '',
+        r.pl || '',
+        (r.notes||'').replace(/\n/g,' ')
+      ];
+    });
+    const csv = [header, ...rows].map(r=>r.map(cell => `"${String(cell).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'trade-journal.csv';
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  });
+
+  // Utility: edit escape for HTML injection safety in table
+  function escapeHtml(s){
+    if(!s) return '';
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // Clear UI when logout
+  function clearUI(){
+    recordsBody.innerHTML = '';
+    totTradesEl.textContent = '0';
+    totPipsEl.textContent = '0';
+    totSLEl.textContent = '0';
+    totPlEl.textContent = '0';
+    filterPair.innerHTML = '<option value="">All pairs</option>';
+    resetForm();
+  }
+
+  // small helper to set default date/time to now (optional)
+  tradeDt.value = new Date().toISOString().slice(0,16);
+
+</script>
+</body>
+</html>
