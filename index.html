@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Trade Journal — Profit / Loss & Pips Tracker</title>
   <style>
+    /* Simple responsive layout */
     :root{
       --maxw:1100px;
       --accent:#1f6feb;
@@ -40,295 +41,360 @@
       header{flex-direction:column;align-items:flex-start;gap:8px}
     }
   </style>
-
-  <!-- Firebase v8 CDN -->
+  <!-- Firebase v8 CDN (Auth + Realtime DB) -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 </head>
 <body>
-<div class="app">
-  <header>
-    <h1>Trade Journal — P/L & Pips Tracker</h1>
-    <div class="auth-card card">
-      <div id="auth-unsigned" class="auth-row">
-        <input id="email" type="email" placeholder="Email" style="width:200px">
-        <input id="password" type="password" placeholder="Password" style="width:150px">
-        <button id="btn-signup">Sign up</button>
-        <button id="btn-login" class="ghost">Login</button>
-      </div>
-      <div id="auth-signed" class="auth-row" style="display:none">
-        <div class="small muted" id="who"></div>
-        <button id="btn-logout" class="ghost">Logout</button>
-      </div>
-    </div>
-  </header>
-
-  <!-- Add / Edit Record -->
-  <section class="card">
-    <h3 style="margin-top:0">Add / Edit Trade</h3>
-    <div id="form-area">
-      <div class="grid grid-2" style="gap:10px">
-        <div>
-          <label>Date & Time</label>
-          <input id="trade-dt" type="datetime-local">
+  <div class="app">
+    <header>
+      <h1>Trade Journal — P/L & Pips Tracker</h1>
+      <div class="auth-card card">
+        <div id="auth-unsigned" class="auth-row">
+          <input id="email" type="email" placeholder="Email" style="width:200px">
+          <input id="password" type="password" placeholder="Password" style="width:150px">
+          <button id="btn-signup">Sign up</button>
+          <button id="btn-login" class="ghost">Login</button>
         </div>
-        <div>
-          <label>Pair / Instrument</label>
-          <select id="pair">
-            <option value="">-- Select Pair --</option>
-            <option>EURUSD</option><option>GBPUSD</option><option>USDJPY</option>
-            <option>USDCHF</option><option>USDCAD</option><option>AUDUSD</option>
-            <option>NZDUSD</option><option>EURGBP</option><option>EURJPY</option>
-            <option>EURCHF</option><option>EURCAD</option><option>EURAUD</option>
-            <option>EURNZD</option><option>GBPJPY</option><option>GBPCHF</option>
-            <option>GBPCAD</option><option>GBPAUD</option><option>GBPNZD</option>
-            <option>CADJPY</option><option>CHFJPY</option><option>AUDJPY</option>
-            <option>AUDNZD</option><option>AUDCAD</option><option>AUDCHF</option>
-            <option>NZDJPY</option><option>NZDCAD</option><option>NZDCHF</option>
-            <option>XAUUSD</option><option>BTCUSD</option>
+        <div id="auth-signed" class="auth-row" style="display:none">
+          <div class="small muted" id="who"></div>
+          <button id="btn-logout" class="ghost">Logout</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Add / Edit Record -->
+    <section class="card">
+      <h3 style="margin-top:0">Add / Edit Trade</h3>
+      <div id="form-area">
+        <div class="grid grid-2" style="gap:10px">
+          <div>
+            <label>Date & Time</label>
+            <input id="trade-dt" type="datetime-local">
+          </div>
+          <div>
+            <label>Pair / Instrument</label>
+            <select id="pair">
+              <option value="">-- Select Pair --</option>
+              <option>XAUUSD</option>
+              <option>BTCUSD</option>
+              <option>USDJPY</option>
+              <option>USDCHF</option>
+              <option>USDCAD</option>
+              <option>AUDUSD</option>
+              <option>NZDUSD</option>
+              <option>EURGBP</option>
+              <option>EURJPY</option>
+              <option>EURCHF</option>
+              <option>EURCAD</option>
+              <option>EURAUD</option>
+              <option>EURNZD</option>
+              <option>GBPJPY</option>
+              <option>GBPCHF</option>
+              <option>GBPCAD</option>
+              <option>GBPAUD</option>
+              <option>GBPNZD</option>
+              <option>CADJPY</option>
+              <option>CHFJPY</option>
+              <option>AUDJPY</option>
+              <option>AUDNZD</option>
+              <option>AUDCAD</option>
+              <option>AUDCHF</option>
+              <option>NZDJPY</option>
+              <option>NZDCAD</option>
+              <option>NZDCHF</option>
+              <option>EURUSD</option>
+              <option>GBPUSD</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-2" style="margin-top:8px">
+          <div>
+            <label>Entry Price</label>
+            <input id="entry" placeholder="Entry price (optional)">
+          </div>
+          <div>
+            <label>Exit Price</label>
+            <input id="exit" placeholder="Exit price (optional)">
+          </div>
+        </div>
+
+        <div class="grid grid-2" style="margin-top:8px">
+          <div>
+            <label>Pips Captured</label>
+            <input id="pips" type="number" placeholder="pips captured (e.g. 25)">
+          </div>
+          <div>
+            <label>Stop Loss (pips)</label>
+            <input id="slpips" type="number" placeholder="SL in pips">
+          </div>
+        </div>
+
+        <div class="grid" style="margin-top:8px">
+          <div>
+            <label>Profit / Loss (₹ / $ / %)</label>
+            <input id="pl" placeholder="Profit or Loss value (e.g. -2000 or 1500)">
+          </div>
+        </div>
+
+        <div style="margin-top:8px">
+          <label>Type mistake / notes</label>
+          <textarea id="notes" rows="3" placeholder="What went wrong? What to improve?"></textarea>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
+          <button id="save-record">Save record</button>
+          <button id="clear-form" class="ghost">Clear</button>
+          <div class="small muted" id="form-mode">Mode: Add</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Controls -->
+    <section class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <div class="filters">
+          <label class="small">Filter</label>
+          <select id="filter-pair">
+            <option value="">All pairs</option>
           </select>
+          <input id="filter-from" type="date">
+          <input id="filter-to" type="date">
+          <button id="apply-filter" class="ghost">Apply</button>
+          <button id="reset-filter" class="ghost">Reset</button>
+        </div>
+
+        <div style="display:flex;gap:8px;align-items:center">
+          <button id="export-csv" class="ghost">Export CSV</button>
+          <button id="delete-all" class="ghost" title="Delete all your records (permanent)">Delete all</button>
         </div>
       </div>
+    </section>
 
-      <div class="grid grid-2" style="margin-top:8px">
-        <div>
-          <label>Entry Price</label>
-          <input id="entry" placeholder="Entry price (optional)">
+    <!-- Summary -->
+    <section class="card">
+      <h3 style="margin-top:0">Summary</h3>
+      <div class="summary" id="summary">
+        <div class="s">
+          <div class="small muted">Total Trades</div>
+          <div id="tot-trades">0</div>
         </div>
-        <div>
-          <label>Exit Price</label>
-          <input id="exit" placeholder="Exit price (optional)">
+        <div class="s">
+          <div class="small muted">Total Pips Captured</div>
+          <div id="tot-pips">0</div>
         </div>
-      </div>
-
-      <div class="grid grid-2" style="margin-top:8px">
-        <div>
-          <label>Pips Captured</label>
-          <input id="pips" type="number" placeholder="pips captured">
+        <div class="s">
+          <div class="small muted">Total SL (sum)</div>
+          <div id="tot-slpips">0</div>
         </div>
-        <div>
-          <label>Stop Loss (pips)</label>
-          <input id="slpips" type="number" placeholder="SL in pips">
-        </div>
-      </div>
-
-      <div class="grid" style="margin-top:8px">
-        <div>
-          <label>Profit / Loss (₹ / $ / %)</label>
-          <input id="pl" placeholder="Profit or Loss value">
+        <div class="s">
+          <div class="small muted">Net P/L (sum)</div>
+          <div id="tot-pl">0</div>
         </div>
       </div>
+    </section>
 
-      <div style="margin-top:8px">
-        <label>Notes</label>
-        <textarea id="notes" rows="3" placeholder="Notes / mistakes"></textarea>
+    <!-- Last 7 Days Performance -->
+    <section class="card">
+      <h3 style="margin-top:0">Last 7 Days Performance</h3>
+      <div class="summary" id="last7-summary">
+        <div class="s">
+          <div class="small muted">Trades</div>
+          <div id="last7-trades">0</div>
+        </div>
+        <div class="s">
+          <div class="small muted">Pips Captured</div>
+          <div id="last7-pips">0</div>
+        </div>
+        <div class="s">
+          <div class="small muted">Total SL</div>
+          <div id="last7-sl">0</div>
+        </div>
+        <div class="s">
+          <div class="small muted">Net P/L</div>
+          <div id="last7-pl">0</div>
+        </div>
       </div>
+    </section>
 
-      <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
-        <button id="save-record">Save record</button>
-        <button id="clear-form" class="ghost">Clear</button>
-        <div class="small muted" id="form-mode">Mode: Add</div>
+    <!-- List -->
+    <section class="card">
+      <h3 style="margin-top:0">Records</h3>
+      <div id="records-wrap">
+        <table id="records-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Pair</th>
+              <th>Pips</th>
+              <th>SL(pips)</th>
+              <th>P/L</th>
+              <th>Notes</th>
+              <th class="small">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="records-body"></tbody>
+        </table>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- Summary & Records -->
-  <section class="card">
-    <h3 style="margin-top:0">Records</h3>
-    <table id="records-table">
-      <thead>
-        <tr>
-          <th>Date</th><th>Pair</th><th>Pips</th><th>SL(pips)</th>
-          <th>P/L</th><th>Notes</th><th class="small">Actions</th>
-        </tr>
-      </thead>
-      <tbody id="records-body"></tbody>
-    </table>
-  </section>
-
-</div>
+    <footer style="font-size:12px;color:var(--muted);margin-top:8px">Made for quick trade journaling — you can modify fields as needed.</footer>
+  </div>
 
 <script>
-/***** FIREBASE CONFIG *****/
-const firebaseConfig = {
-  apiKey: "AIzaSyA9eFUc13C4WOcxoqT-oM1sqDEli2YxxAg",
-  authDomain: "trading-journal-2ed62.firebaseapp.com",
-  databaseURL: "https://trading-journal-2ed62-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "trading-journal-2ed62",
-  storageBucket: "trading-journal-2ed62.appspot.com",
-  messagingSenderId: "436859301261",
-  appId: "1:436859301261:web:5557306d54d4a3778c61c4",
-};
-firebase.initializeApp(firebaseConfig);
-
-/***** DOM REFS *****/
-const emailEl = document.getElementById('email');
-const passEl = document.getElementById('password');
-const btnSignup = document.getElementById('btn-signup');
-const btnLogin = document.getElementById('btn-login');
-const authUnsigned = document.getElementById('auth-unsigned');
-const authSigned = document.getElementById('auth-signed');
-const whoEl = document.getElementById('who');
-const btnLogout = document.getElementById('btn-logout');
-
-const tradeDt = document.getElementById('trade-dt');
-const pairEl = document.getElementById('pair');
-const entryEl = document.getElementById('entry');
-const exitEl = document.getElementById('exit');
-const pipsEl = document.getElementById('pips');
-const slpipsEl = document.getElementById('slpips');
-const plEl = document.getElementById('pl');
-const notesEl = document.getElementById('notes');
-const saveBtn = document.getElementById('save-record');
-const clearBtn = document.getElementById('clear-form');
-
-const recordsBody = document.getElementById('records-body');
-
-let currentUser = null;
-let editId = null;
-let allRecords = {};
-
-/***** AUTH *****/
-btnSignup.addEventListener('click', ()=>{
-  const email = emailEl.value.trim(), pw = passEl.value;
-  if(!email||!pw){alert('Enter email and password'); return;}
-  firebase.auth().createUserWithEmailAndPassword(email,pw)
-    .then(()=>alert('Account created! Now login'))
-    .catch(e=>alert('Signup error: '+e.message));
-});
-
-btnLogin.addEventListener('click', ()=>{
-  const email = emailEl.value.trim(), pw = passEl.value;
-  if(!email||!pw){alert('Enter email and password'); return;}
-  firebase.auth().signInWithEmailAndPassword(email,pw)
-    .catch(e=>alert('Login error: '+e.message));
-});
-
-btnLogout.addEventListener('click', ()=>firebase.auth().signOut());
-
-firebase.auth().onAuthStateChanged(user=>{
-  currentUser = user;
-  if(user){
-    authUnsigned.style.display='none';
-    authSigned.style.display='flex';
-    whoEl.textContent = user.email;
-    startListeningRecords();
-  } else {
-    authUnsigned.style.display='flex';
-    authSigned.style.display='none';
-    whoEl.textContent='';
-    stopListeningRecords();
-    clearUI();
-  }
-});
-
-/***** DATABASE LISTENING *****/
-let dbRef = null;
-function startListeningRecords(){
-  if(!currentUser) return;
-  dbRef = firebase.database().ref('users/'+currentUser.uid+'/records');
-  dbRef.on('value', snapshot=>{
-    allRecords = snapshot.val()||{};
-    renderRecords();
-  });
-}
-function stopListeningRecords(){ if(dbRef) dbRef.off(); dbRef=null; }
-
-/***** SAVE / UPDATE RECORD *****/
-saveBtn.addEventListener('click', ()=>{
-  if(!currentUser){alert('Login first'); return;}
-  const dtVal = tradeDt.value ? new Date(tradeDt.value).getTime() : Date.now();
-  const dtISO = tradeDt.value ? new Date(tradeDt.value).toISOString() : new Date().toISOString();
-  const pair = pairEl.value.trim();
-  if(!pair){alert('Select pair'); return;}
-  const data = {
-    dt: dtVal,
-    dtISO,
-    pair,
-    entry: entryEl.value.trim(),
-    exit: exitEl.value.trim(),
-    pips: pipsEl.value?Number(pipsEl.value):0,
-    sl_pips: slpipsEl.value?Number(slpipsEl.value):0,
-    pl: plEl.value?Number(plEl.value):0,
-    notes: notesEl.value.trim()
+  const firebaseConfig = {
+    apiKey: "AIzaSyA9eFUc13C4WOcxoqT-oM1sqDEli2YxxAg",
+    authDomain: "trading-journal-2ed62.firebaseapp.com",
+    databaseURL: "https://trading-journal-2ed62-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "trading-journal-2ed62",
+    storageBucket: "trading-journal-2ed62.appspot.com",
+    messagingSenderId: "436859301261",
+    appId: "1:436859301261:web:5557306d54d4a3778c61c4",
+    measurementId: "G-B61PTQLM6Y"
   };
-  const userRef = firebase.database().ref('users/'+currentUser.uid+'/records');
-  if(editId){
-    userRef.child(editId).set(data)
-      .then(()=>{resetForm(); console.log('Record updated')})
-      .catch(e=>alert('Update error: '+e.message));
-  } else {
-    const newRef = userRef.push();
-    newRef.set(data)
-      .then(()=>{resetForm(); console.log('Record saved')})
-      .catch(e=>alert('Save error: '+e.message));
+  firebase.initializeApp(firebaseConfig);
+
+  // DOM references
+  const emailEl = document.getElementById('email');
+  const passEl = document.getElementById('password');
+  const btnSignup = document.getElementById('btn-signup');
+  const btnLogin = document.getElementById('btn-login');
+  const authUnsigned = document.getElementById('auth-unsigned');
+  const authSigned = document.getElementById('auth-signed');
+  const whoEl = document.getElementById('who');
+  const btnLogout = document.getElementById('btn-logout');
+
+  const tradeDt = document.getElementById('trade-dt');
+  const pairEl = document.getElementById('pair');
+  const entryEl = document.getElementById('entry');
+  const exitEl = document.getElementById('exit');
+  const pipsEl = document.getElementById('pips');
+  const slpipsEl = document.getElementById('slpips');
+  const plEl = document.getElementById('pl');
+  const notesEl = document.getElementById('notes');
+  const saveBtn = document.getElementById('save-record');
+  const clearBtn = document.getElementById('clear-form');
+  const formMode = document.getElementById('form-mode');
+
+  const recordsBody = document.getElementById('records-body');
+  const totTradesEl = document.getElementById('tot-trades');
+  const totPipsEl = document.getElementById('tot-pips');
+  const totSLEl = document.getElementById('tot-slpips');
+  const totPlEl = document.getElementById('tot-pl');
+
+  const exportCsvBtn = document.getElementById('export-csv');
+  const deleteAllBtn = document.getElementById('delete-all');
+
+  const filterPair = document.getElementById('filter-pair');
+  const filterFrom = document.getElementById('filter-from');
+  const filterTo = document.getElementById('filter-to');
+  const applyFilter = document.getElementById('apply-filter');
+  const resetFilter = document.getElementById('reset-filter');
+
+  let currentUser = null;
+  let editId = null;
+  let allRecords = {}; // cached copy
+
+  // AUTH actions
+  btnSignup.addEventListener('click', () => {
+    const email = emailEl.value.trim();
+    const pw = passEl.value;
+    if(!email||!pw){alert('Enter email and password');return;}
+    firebase.auth().createUserWithEmailAndPassword(email,pw)
+      .then(()=>alert('Account created — now you can login'))
+      .catch(e=>alert('Signup error: '+e.message));
+  });
+
+  btnLogin.addEventListener('click', () => {
+    const email = emailEl.value.trim();
+    const pw = passEl.value;
+    if(!email||!pw){alert('Enter email and password');return;}
+    firebase.auth().signInWithEmailAndPassword(email,pw)
+      .catch(e=>alert('Login error: '+e.message));
+  });
+
+  btnLogout.addEventListener('click', () => {
+    firebase.auth().signOut();
+  });
+
+  firebase.auth().onAuthStateChanged(user=>{
+    currentUser = user;
+    if(user){
+      authUnsigned.style.display='none';
+      authSigned.style.display='flex';
+      whoEl.textContent = user.email;
+      startListeningRecords();
+    } else {
+      authUnsigned.style.display='flex';
+      authSigned.style.display='none';
+      whoEl.textContent='';
+      stopListeningRecords();
+      clearUI();
+    }
+  });
+
+  let dbRef = null;
+  function startListeningRecords(){
+    if(!currentUser) return;
+    dbRef = firebase.database().ref('users/'+currentUser.uid+'/records');
+    dbRef.on('value', snapshot=>{
+      const val = snapshot.val() || {};
+      allRecords = val;
+      renderRecords(val);
+    });
   }
-});
+  function stopListeningRecords(){
+    if(dbRef) dbRef.off();
+    dbRef = null;
+    allRecords = {};
+  }
 
-/***** FORM RESET *****/
-function resetForm(){
-  tradeDt.value = '';
-  pairEl.value = '';
-  entryEl.value = '';
-  exitEl.value = '';
-  pipsEl.value = '';
-  slpipsEl.value = '';
-  plEl.value = '';
-  notesEl.value = '';
-  editId = null;
-}
+  // Save / Update record
+  saveBtn.addEventListener('click', () => {
+    if(!currentUser){alert('Login first');return;}
+    const dtVal = tradeDt.value ? new Date(tradeDt.value).getTime() : Date.now();
+    const dtISO = tradeDt.value ? new Date(tradeDt.value).toISOString() : new Date().toISOString();
+    const pair = pairEl.value.trim();
+    const entry = entryEl.value.trim();
+    const exit = exitEl.value.trim();
+    const pips = pipsEl.value ? Number(pipsEl.value) : 0;
+    const sl_pips = slpipsEl.value ? Number(slpipsEl.value) : 0;
+    const pl = plEl.value ? Number(plEl.value) : 0;
+    const notes = notesEl.value.trim();
 
-/***** RECORDS RENDERING *****/
-function renderRecords(){
-  const arr = Object.keys(allRecords).map(id=>({id, ...allRecords[id]}))
-    .sort((a,b)=>b.dt - a.dt);
-  recordsBody.innerHTML='';
-  arr.forEach(r=>{
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${new Date(r.dt).toLocaleString()}</td>
-      <td>${r.pair}</td>
-      <td>${r.pips||''}</td>
-      <td>${r.sl_pips||''}</td>
-      <td>${r.pl||''}</td>
-      <td>${r.notes||''}</td>
-      <td class="actions small">
-        <button data-id="${r.id}" class="btn-edit">Edit</button>
-        <button data-id="${r.id}" class="btn-delete">Delete</button>
-      </td>`;
-    recordsBody.appendChild(tr);
+    if(!pair){alert('Enter pair/instrument');return;}
+
+    const data = { dt: dtVal, dtISO, pair, entry, exit, pips, sl_pips, pl, notes };
+
+    const userRef = firebase.database().ref('users/'+currentUser.uid+'/records');
+    if(editId){
+      userRef.child(editId).set(data).then(resetForm).catch(e=>alert('Error updating: '+e.message));
+    } else {
+      const newRef = userRef.push();
+      newRef.set(data).then(resetForm).catch(e=>alert('Error saving: '+e.message));
+    }
   });
 
-  Array.from(document.getElementsByClassName('btn-edit')).forEach(b=>{
-    b.onclick = ev=>{
-      const id = ev.target.getAttribute('data-id');
-      const r = allRecords[id];
-      if(!r){alert('Record not found'); return;}
-      editId = id;
-      tradeDt.value = r.dtISO? r.dtISO.substring(0,16):'';
-      pairEl.value = r.pair||'';
-      entryEl.value = r.entry||'';
-      exitEl.value = r.exit||'';
-      pipsEl.value = r.pips||'';
-      slpipsEl.value = r.sl_pips||'';
-      plEl.value = r.pl||'';
-      notesEl.value = r.notes||'';
-    };
-  });
+  function resetForm(){
+    tradeDt.value = '';
+    pairEl.value = '';
+    entryEl.value = '';
+    exitEl.value = '';
+    pipsEl.value = '';
+    slpipsEl.value = '';
+    plEl.value = '';
+    notesEl.value = '';
+    editId = null;
+    formMode.textContent = 'Mode: Add';
+  }
+  clearBtn.addEventListener('click', resetForm);
 
-  Array.from(document.getElementsByClassName('btn-delete')).forEach(b=>{
-    b.onclick = ev=>{
-      const id = ev.target.getAttribute('data-id');
-      if(confirm('Delete this record?'))
-        firebase.database().ref('users/'+currentUser.uid+'/records/'+id).remove();
-    };
-  });
-}
+  function renderRecords(recordsObj){
+    const arr = Object.keys(recordsObj).map(id => ({ id, ...recordsObj[id] })).sort((a,b)=>b.dt - a.dt);
 
-/***** CLEAR UI ON LOGOUT *****/
-function clearUI(){ recordsBody.innerHTML=''; resetForm(); }
-
-</script>
-</body>
-</html>
+    // apply filters
+    const fp = filterPair.value;
+    const from = filterFrom.value ? new Date(filterFrom.value).setHours(0,0,0,0) : null;
+    const to = filterTo.value ? new Date(filterTo.value).setHours
